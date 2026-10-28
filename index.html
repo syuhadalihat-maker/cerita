@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bina Cerita Pendek - Kata Ganti Nama Diri</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: 'Comic Sans MS', 'Chalkboard SE', 'Fredoka', cursive, sans-serif;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: #fff;
+    }
+
+    /* Webcam Feed Background */
+    #webcam-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      overflow: hidden;
+      display: none;
+    }
+
+    #webcam {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+      opacity: 0.35;
+      filter: blur(2px);
+    }
+
+    /* Main Container */
+    #game-app {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+    }
+
+    /* Top Bar */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 12px 25px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      color: #ffeb3b;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-panel {
+      display: flex;
+      gap: 20px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 8px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #ff9800, #f57c00);
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .btn:hover {
+      transform: scale(1.05);
+      background: linear-gradient(135deg, #ffa726, #fb8c00);
+    }
+
+    /* Game Play Area */
+    #play-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      margin: 20px 0;
+    }
+
+    /* Phase 1: Mystery Gift Boxes Grid */
+    #boxes-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 25px;
+      width: 90%;
+      max-width: 1000px;
+    }
+
+    .box-card {
+      position: relative;
+      aspect-ratio: 1;
+      background: linear-gradient(145deg, #ff4081, #d81b60);
+      border-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4), inset 0 2px 5px rgba(255, 255, 255, 0.4);
+      border: 4px solid #fff;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      overflow: hidden;
+    }
+
+    .box-card:hover {
+      transform: translateY(-8px) scale(1.03);
+      box-shadow: 0 18px 35px rgba(255, 235, 59, 0.5), inset 0 2px 5px rgba(255, 255, 255, 0.6);
+    }
+
+    .box-icon {
+      font-size: 70px;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .box-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px 15px;
+      border-radius: 20px;
+    }
+
+    /* Dwell Progress Ring Overlay */
+    .dwell-ring {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: none;
+    }
+
+    .dwell-ring svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .dwell-ring circle {
+      fill: none;
+      stroke: #ffeb3b;
+      stroke-width: 10;
+      stroke-dasharray: 440;
+      stroke-dashoffset: 440;
+      transition: stroke-dashoffset 0.05s linear;
+    }
+
+    .box-card.dwelling .dwell-ring {
+      display: block;
+    }
+
+    /* Shake Anim for Box Opening */
+    @keyframes shake {
+      0% { transform: translate(1px, 1px) rotate(0deg); }
+      20% { transform: translate(-3px, 0px) rotate(5deg); }
+      40% { transform: translate(3px, 2px) rotate(-5deg); }
+      60% { transform: translate(-3px, 1px) rotate(5deg); }
+      80% { transform: translate(3px, 1px) rotate(-5deg); }
+      100% { transform: translate(1px, -2px) rotate(0deg); }
+    }
+
+    .box-card.opening {
+      animation: shake 0.5s ease-in-out infinite;
+      background: linear-gradient(145deg, #ffeb3b, #fbc02d) !important;
+    }
+
+    /* Revealed Story Card State */
+    .box-card.opened {
+      background: linear-gradient(145deg, #ffffff, #f0f4f8) !important;
+      color: #333;
+      border-color: #4caf50;
+      cursor: default;
+    }
+
+    .box-card.opened .box-icon {
+      display: none;
+    }
+
+    .story-text {
+      padding: 15px;
+      text-align: center;
+      font-size: 16px;
+      line-height: 1.4;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    .pronoun-tag {
+      color: #e91e63;
+      background: #fce4ec;
+      padding: 2px 8px;
+      border-radius: 8px;
+      border: 1px solid #f8bbd0;
+    }
+
+    .order-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 36px;
+      height: 36px;
+      background: #4caf50;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 18px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    /* Phase 2: Ordering Area */
+    #story-assembly {
+      width: 90%;
+      max-width: 1000px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 24px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .instruction-text {
+      font-size: 20px;
+      color: #ffeb3b;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+      text-align: center;
+    }
+
+    #sequence-slots {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      width: 100%;
+    }
+
+    .slot-card {
+      background: rgba(255, 255, 255, 0.9);
+      color: #333;
+      border-radius: 16px;
+      padding: 15px;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+      cursor: pointer;
+      transition: transform 0.2s, border 0.2s;
+      border: 3px solid transparent;
+      position: relative;
+    }
+
+    .slot-card.selected {
+      border-color: #ff9800;
+      transform: scale(1.03);
+    }
+
+    .slot-num {
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      width: 32px;
+      height: 32px;
+      background: #2196f3;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+    }
+
+    /* Floating Particles Effect */
+    .particle {
+      position: absolute;
+      pointer-events: none;
+      animation: explode 0.8s ease-out forwards;
+      border-radius: 50%;
+    }
+
+    @keyframes explode {
+      0% { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+    }
+
+    /* Modal / End Game Screen */
+    #end-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 100;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #ffffff, #f0f4f8);
+      color: #333;
+      border-radius: 30px;
+      padding: 35px;
+      width: 90%;
+      max-width: 500px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .stars {
+      font-size: 45px;
+      color: #ffc107;
+      margin: 15px 0;
+    }
+
+    .score-detail {
+      font-size: 20px;
+      margin: 10px 0;
+      color: #555;
+    }
+
+    .score-number {
+      font-size: 36px;
+      font-weight: bold;
+      color: #e91e63;
+    }
+
+    .leaderboard {
+      margin-top: 20px;
+      background: #eef2f5;
+      padding: 15px;
+      border-radius: 16px;
+      text-align: left;
+    }
+
+    .leaderboard h3 {
+      margin-top: 0;
+      color: #3f51b5;
+      font-size: 16px;
+    }
+
+    .leaderboard ol {
+      margin: 0;
+      padding-left: 20px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Webcam Layer (AR Background) -->
+  <div id="webcam-container">
+    <video id="webcam" autoplay playsinline muted></video>
+  </div>
+
+  <!-- Main Game GUI -->
+  <div id="game-app">
+    <header>
+      <h1>🎁 Bina Cerita: Kata Ganti Nama Diri</h1>
+      <div class="status-panel">
+        <div class="badge">⏱️ Masa: <span id="timer">0</span>s</div>
+        <div class="badge">⭐ Skor: <span id="score">0</span></div>
+        <button class="btn" id="btn-webcam" onclick="toggleWebcam()">📷 Mod Webcam</button>
+      </div>
+    </header>
+
+    <main id="play-area">
+      <!-- Phase 1: 4 Mystery Boxes Grid -->
+      <div id="boxes-grid">
+        <!-- Generated Dynamically -->
+      </div>
+
+      <!-- Phase 2: Ordering Screen -->
+      <div id="story-assembly">
+        <div class="instruction-text">
+          ✨ Tahniah! Semua kotak telah dibuka. Sekarang, susun semula potongan cerita di bawah mengikut urutan (1 hingga 4) yang betul!
+        </div>
+        <div id="sequence-slots">
+          <!-- Assembly slots dynamically loaded -->
+        </div>
+        <button class="btn" style="font-size: 20px; padding: 12px 30px; margin-top: 15px;" onclick="checkStorySequence()">Semak Urutan Cerita 🚀</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- End Game High Score Screen -->
+  <div id="end-modal">
+    <div class="modal-content">
+      <h2>🎉 SYABAS & TAHNIAH! 🎉</h2>
+      <p>Anda telah berjaya membina cerita pendek dengan betul!</p>
+      
+      <div class="stars" id="star-rating">⭐⭐⭐</div>
+      
+      <div class="score-detail">
+        Skor Akhir Anda:
+        <div class="score-number" id="final-score">0</div>
+      </div>
+      <div style="font-size: 14px; color: #666;">Masa Diambil: <span id="final-time">0</span> Saat</div>
+
+      <div class="leaderboard">
+        <h3>🏆 Rekod Markah Tertinggi (Local High Scores)</h3>
+        <ol id="high-score-list">
+          <!-- Dynamically filled -->
+        </ol>
+      </div>
+
+      <button class="btn" style="font-size: 18px; margin-top: 20px; padding: 10px 25px;" onclick="restartGame()">Main Semula 🔄</button>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================
+       1. DATA SETS & GAME VARIABLES
+       ========================================================== */
+    const storySets = [
+      {
+        title: "Kucing Comel Sang Sang",
+        cards: [
+          { text: "1. Pada suatu petang, Aiman menemui seekor anak kucing yang comel.", order: 1, pronoun: "Aiman" },
+          { text: "2. <span class=\"pronoun-tag\">Dia</span> membawa anak kucing itu balik ke rumah untuk dibersihkan.", order: 2, pronoun: "Dia" },
+          { text: "3. <span class=\"pronoun-tag\">Kita</span> mestilah menyayangi haiwan haiwan terbiar seperti kucing ini.", order: 3, pronoun: "Kita" },
+          { text: "4. Aiman dan ibunya memberi nama 'Tompok' kepada anak kucing itu.", order: 4, pronoun: "Aiman & Ibu" }
+        ]
+      },
+      {
+        title: "Gotong-Royong Sekolah",
+        cards: [
+          { text: "1. Murid-murid Tahun 4 sekolah kami berkumpul di padang.", order: 1, pronoun: "Murid-murid" },
+          { text: "2. <span class=\"pronoun-tag\">Mereka</span> membawa peralatan seperti cangkul dan penyapu.", order: 2, pronoun: "Mereka" },
+          { text: "3. Cikgu Ghazali memuji amalan murni yang ditunjukkan oleh murid-murid.", order: 3, pronoun: "Cikgu Ghazali" },
+          { text: "4. <span class=\"pronoun-tag\">Beliau</span> menasihati murid agar sentiasa menjaga kebersihan sekolah.", order: 4, pronoun: "Beliau" }
+        ]
+      }
+    ];
+
+    let currentStory = null;
+    let shuffledCards = [];
+    let openedCount = 0;
+    let timerInterval = null;
+    let secondsElapsed = 0;
+    let totalScore = 0;
+    let dwellTimer = null;
+    let currentDwellCard = null;
+
+    /* Web Audio Synthesizer for SFX */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playTone(freq, type, duration) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function playSFX(name) {
+      if (name === 'tick') playTone(800, 'sine', 0.05);
+      if (name === 'open') {
+        playTone(400, 'triangle', 0.1);
+        setTimeout(() => playTone(600, 'triangle', 0.1), 100);
+        setTimeout(() => playTone(800, 'triangle', 0.3), 200);
+      }
+      if (name === 'win') {
+        playTone(523.25, 'sine', 0.15); // C5
+        setTimeout(() => playTone(659.25, 'sine', 0.15), 150); // E5
+        setTimeout(() => playTone(783.99, 'sine', 0.15), 300); // G5
+        setTimeout(() => playTone(1046.50, 'sine', 0.4), 450); // C6
+      }
+      if (name === 'wrong') {
+        playTone(200, 'sawtooth', 0.3);
+      }
+    }
+
+    /* ==========================================================
+       2. GAME INITIALIZATION & LOGIC
+       ========================================================== */
+    function initGame() {
+      // Pick random story
+      currentStory = storySets[Math.floor(Math.random() * storySets.length)];
+      shuffledCards = [...currentStory.cards].sort(() => Math.random() - 0.5);
+      
+      openedCount = 0;
+      secondsElapsed = 0;
+      totalScore = 0;
+      
+      document.getElementById('timer').innerText = '0';
+      document.getElementById('score').innerText = '0';
+      document.getElementById('story-assembly').style.display = 'none';
+      document.getElementById('boxes-grid').style.display = 'grid';
+      document.getElementById('end-modal').style.display = 'none';
+
+      // Start Timer
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        secondsElapsed++;
+        document.getElementById('timer').innerText = secondsElapsed;
+      }, 1000);
+
+      renderBoxes();
+    }
+
+    function renderBoxes() {
+      const grid = document.getElementById('boxes-grid');
+      grid.innerHTML = '';
+
+      shuffledCards.forEach((card, index) => {
+        const box = document.createElement('div');
+        box.className = 'box-card';
+        box.dataset.index = index;
+
+        box.innerHTML = `
+          <div class="dwell-ring">
+            <svg viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r="70"></circle>
+            </svg>
+          </div>
+          <div class="box-icon">🎁</div>
+          <div class="box-title">Kotak ${index + 1}</div>
+        `;
+
+        // Add Dwell (Hover / Hold 1s) Listeners
+        box.addEventListener('mouseenter', () => startDwell(box));
+        box.addEventListener('mouseleave', () => cancelDwell(box));
+        box.addEventListener('touchstart', (e) => { e.preventDefault(); startDwell(box); });
+        box.addEventListener('touchend', () => cancelDwell(box));
+
+        grid.appendChild(box);
+      });
+    }
+
+    /* Dwell Mechanics (1 Second Hold) */
+    function startDwell(box) {
+      if (box.classList.contains('opened') || box.classList.contains('opening')) return;
+
+      currentDwellCard = box;
+      box.classList.add('dwelling');
+
+      const circle = box.querySelector('circle');
+      let progress = 0;
+      playSFX('tick');
+
+      dwellTimer = setInterval(() => {
+        progress += 5;
+        const offset = 440 - (440 * progress / 100);
+        circle.style.strokeDashoffset = offset;
+
+        if (progress % 25 === 0) playSFX('tick');
+
+        if (progress >= 100) {
+          cancelDwell(box);
+          openBox(box);
+        }
+      }, 50); // 50ms * 20 steps = 1000ms (1 second dwell)
+    }
+
+    function cancelDwell(box) {
+      if (dwellTimer) clearInterval(dwellTimer);
+      dwellTimer = null;
+      if (box) {
+        box.classList.remove('dwelling');
+        const circle = box.querySelector('circle');
+        if (circle) circle.style.strokeDashoffset = 440;
+      }
+    }
+
+    function openBox(box) {
+      const index = box.dataset.index;
+      const cardData = shuffledCards[index];
+
+      box.classList.add('opening');
+      playSFX('open');
+      createExplosion(box);
+
+      setTimeout(() => {
+        box.classList.remove('opening');
+        box.classList.add('opened');
+        
+        box.innerHTML = `
+          <div class="story-text">${cardData.text}</div>
+        `;
+
+        openedCount++;
+
+        // When all 4 boxes are open, move to Phase 2: Sequencing
+        if (openedCount === 4) {
+          setTimeout(showSequencingPhase, 1200);
+        }
+      }, 800);
+    }
+
+    function createExplosion(element) {
+      const rect = element.getBoundingClientRect();
+      const colors = ['#ffeb3b', '#ff4081', '#00e676', '#29b6f6', '#ab47bc'];
+      
+      for (let i = 0; i < 25; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const size = Math.random() * 12 + 6;
+        
+        particle.style.width = size + 'px';
+        particle.style.height = size + 'px';
+        particle.style.background = color;
+        particle.style.left = (rect.left + rect.width / 2) + 'px';
+        particle.style.top = (rect.top + rect.height / 2) + 'px';
+
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * 100 + 50;
+        particle.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+        particle.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+
+        document.body.appendChild(particle);
+        setTimeout(() => particle.remove(), 800);
+      }
+    }
+
+    /* ==========================================================
+       3. PHASE 2: STORY SEQUENCING
+       ========================================================== */
+    let selectedOrder = [];
+
+    function showSequencingPhase() {
+      document.getElementById('boxes-grid').style.display = 'none';
+      const assembly = document.getElementById('story-assembly');
+      assembly.style.display = 'flex';
+
+      const slotsContainer = document.getElementById('sequence-slots');
+      slotsContainer.innerHTML = '';
+      selectedOrder = [];
+
+      // Display the opened cards for arrangement
+      shuffledCards.forEach((card, idx) => {
+        const cardElem = document.createElement('div');
+        cardElem.className = 'slot-card';
+        cardElem.dataset.cardId = idx;
+
+        cardElem.innerHTML = `
+          <div class="story-text" style="padding:0;">${card.text}</div>
+          <div style="font-size:12px; color:#666; text-align:right;">Klik untuk pilih/tukar</div>
+        `;
+
+        cardElem.onclick = () => toggleCardSelection(cardElem, idx);
+        slotsContainer.appendChild(cardElem);
+      });
+    }
+
+    function toggleCardSelection(element, idx) {
+      if (element.classList.contains('selected')) {
+        element.classList.remove('selected');
+        const numBadge = element.querySelector('.slot-num');
+        if (numBadge) numBadge.remove();
+        selectedOrder = selectedOrder.filter(id => id !== idx);
+      } else {
+        if (selectedOrder.length >= 4) return;
+        element.classList.add('selected');
+        selectedOrder.push(idx);
+
+        const badge = document.createElement('div');
+        badge.className = 'slot-num';
+        badge.innerText = selectedOrder.length;
+        element.appendChild(badge);
+      }
+    }
+
+    function checkStorySequence() {
+      if (selectedOrder.length < 4) {
+        alert("Sila pilih keempat-empat potongan cerita mengikut urutan 1, 2, 3, dan 4!");
+        return;
+      }
+
+      let isCorrect = true;
+      for (let i = 0; i < 4; i++) {
+        const cardIndex = selectedOrder[i];
+        if (shuffledCards[cardIndex].order !== i + 1) {
+          isCorrect = false;
+          break;
+        }
+      }
+
+      if (isCorrect) {
+        clearInterval(timerInterval);
+        playSFX('win');
+        calculateScore();
+      } else {
+        playSFX('wrong');
+        alert("Urutan cerita belum tepat. Sila semak semula ayat dan kata ganti nama diri yang digunakan!");
+      }
+    }
+
+    /* ==========================================================
+       4. SCORING & LEADERBOARD
+       ========================================================== */
+    function calculateScore() {
+      const baseScore = 1000;
+      const timeBonus = Math.max(0, 500 - (secondsElapsed * 10));
+      totalScore = baseScore + timeBonus;
+
+      document.getElementById('score').innerText = totalScore;
+      document.getElementById('final-score').innerText = totalScore;
+      document.getElementById('final-time').innerText = secondsElapsed;
+
+      // Stars Rating
+      let stars = '⭐⭐⭐';
+      if (secondsElapsed > 40) stars = '⭐⭐';
+      if (secondsElapsed > 70) stars = '⭐';
+      document.getElementById('star-rating').innerText = stars;
+
+      saveHighScore(totalScore);
+      document.getElementById('end-modal').style.display = 'flex';
+    }
+
+    function saveHighScore(newScore) {
+      let highScores = JSON.parse(localStorage.getItem('bm_story_scores')) || [];
+      highScores.push({ score: newScore, date: new Date().toLocaleDateString() });
+      highScores.sort((a, b) => b.score - a.score);
+      highScores = highScores.slice(0, 5); // Keep Top 5
+      localStorage.setItem('bm_story_scores', JSON.stringify(highScores));
+
+      const listElem = document.getElementById('high-score-list');
+      listElem.innerHTML = highScores.map(item => `<li>Skor: <b>${item.score}</b> pt - ${item.date}</li>`).join('');
+    }
+
+    function restartGame() {
+      initGame();
+    }
+
+    /* ==========================================================
+       5. WEBCAM TOGGLE (AR BG)
+       ========================================================== */
+    let webcamStream = null;
+
+    async function toggleWebcam() {
+      const container = document.getElementById('webcam-container');
+      const video = document.getElementById('webcam');
+      const btn = document.getElementById('btn-webcam');
+
+      if (webcamStream) {
+        // Turn Off
+        webcamStream.getTracks().forEach(track => track.stop());
+        webcamStream = null;
+        container.style.display = 'none';
+        btn.innerText = '📷 Mod Webcam';
+      } else {
+        // Turn On
+        try {
+          webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          video.srcObject = webcamStream;
+          container.style.display = 'block';
+          btn.innerText = '🚫 Tutup Webcam';
+        } catch (err) {
+          alert('Gagal mengakses kamera web. Sila pastikan anda membenarkan (Allow) kebenaran kamera pada pelayar web.');
+        }
+      }
+    }
+
+    // Start Game on Load
+    window.onload = initGame;
+  </script>
+</body>
+</html>
